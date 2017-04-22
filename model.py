@@ -1,9 +1,10 @@
+# import libraries
 import tensorflow as tf
 import csv
 import cv2
 import numpy as np
-
-lines = []
+import sklearn
+from sklearn.model_selection import train_test_split
 
 def combine_lines(files):
     if lines == []:
@@ -14,14 +15,15 @@ def combine_lines(files):
                 for line in reader:
                     lines.append(line)
 
+# combine data from different files
+lines = []
 files = ['normal', 'data', 'curve', 'steer_back', 'normal_back', 'normal_more']
 combine_lines(files)
 
-from sklearn.model_selection import train_test_split
+# split the samples
 train_samples, validation_samples = train_test_split(lines, test_size=0.2)
 
-import sklearn
-
+# create a generator in case RAM is not enough
 def generator(samples, batch_size=32, training=True):
     num_samples = len(samples)
     while 1: # Loop forever so the generator never terminates
@@ -80,6 +82,7 @@ def generator(samples, batch_size=32, training=True):
 train_generator = generator(train_samples, batch_size=32)
 validation_generator = generator(validation_samples, batch_size=32, training=False)
 
+# create training pipeline
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D
 from keras.layers.convolutional import Convolution2D
@@ -102,17 +105,13 @@ model.add(Dropout(0.7))
 model.add(Dense(100))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer='adam')
-# model.fit(X_train, y_train, batch_size=32, nb_epoch=10, validation_split=0.2, shuffle=True)
-history_object = model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator, \
-                                     nb_val_samples=len(validation_samples), nb_epoch=10, verbose=1)
+history_object = model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator, nb_val_samples=len(validation_samples), nb_epoch=10, verbose=1)
 model.save('model.h5')
 
+# visuilze the training
 import matplotlib.pyplot as plt
 
-### print the keys contained in the history object
 print(history_object.history.keys())
-
-### plot the training and validation loss for each epoch
 plt.plot(history_object.history['loss'])
 plt.plot(history_object.history['val_loss'])
 plt.title('model mean squared error loss')
